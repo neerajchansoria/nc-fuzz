@@ -1,1 +1,123 @@
-];</script></body></html>
+<script>
+function buildTable(data) {
+  const container = document.createElement("div");
+  container.innerHTML = `
+    <style>
+      #controls { margin-bottom: 10px; }
+      input, button { margin-right: 10px; padding: 4px; }
+      table { width: 100%; border-collapse: collapse; }
+      th, td { padding: 8px; border: 1px solid #444; }
+      th { background-color: #161b22; color: #fff; cursor: pointer; }
+      .high-risk { background-color: #581c1c; color: #fff; }
+      .medium-risk { background-color: #8b4513; color: #fff; }
+      .low-risk { background-color: #1c581c; color: #fff; }
+    </style>
+    <div id="controls">
+      <input type="text" id="searchInput" placeholder="Search URLs or Titles..." onkeyup="filterTable()">
+      <button onclick="toggleTheme()">Toggle Theme</button>
+      <button onclick="exportCSV()">Export CSV</button>
+    </div>
+	<div id="legend" style="margin-top:20px; margin-bottom:10px;">
+  <strong>Risk Legend:</strong>
+  <span style="display:inline-block;width:20px;height:20px;background:#581c1c;margin:0 5px;"></span> High Risk
+  <span style="display:inline-block;width:20px;height:20px;background:#8b4513;margin:0 5px;"></span> Medium Risk
+  <span style="display:inline-block;width:20px;height:20px;background:#1c581c;margin:0 5px;"></span> Low Risk
+</div>
+    <table id="dataTable">
+      <thead><tr>
+        <th onclick="sortTable(0)">URL</th>
+        <th onclick="sortTable(1)">Status</th>
+        <th onclick="sortTable(2)">Title</th>
+        <th onclick="sortTable(3)">Webserver</th>
+        <th onclick="sortTable(4)">TLS</th>
+        <th onclick="sortTable(5)">CDN</th>
+        <th onclick="sortTable(6)">Technologies</th>
+        <th onclick="sortTable(7)">Length</th>
+        <th onclick="sortTable(8)">Risk</th>
+      </tr></thead>
+      <tbody id="dataBody"></tbody>
+    </table>
+  `;
+  document.body.appendChild(container);
+
+  const tbody = document.getElementById("dataBody");
+  data.forEach(row => {
+    let score = 0;
+    if (row.title?.toLowerCase().match(/login|admin|signin|auth/)) score += 2;
+    if (row.tls?.tls_version && !["tls1.2", "tls1.3"].includes(row.tls.tls_version)) score += 1;
+    if (row.content_length > 1000) score += 1;
+    if (row.cdn) score += 1;
+    if (row.tech) score += row.tech.length;
+
+    let riskClass = "low-risk";
+    if (score >= 6) riskClass = "high-risk";
+    else if (score >= 3) riskClass = "medium-risk";
+
+    const tr = document.createElement("tr");
+    tr.className = riskClass;
+    tr.innerHTML = `
+      <td><a href="${row.url}" target="_blank">${row.url}</a></td>
+      <td>${row.status_code || "-"}</td>
+      <td>${row.title || "-"}</td>
+      <td>${row.webserver || "-"}</td>
+      <td>${row.tls?.tls_version || "-"}</td>
+      <td>${row.cdn}</td>
+      <td>${(row.tech || []).join(', ')}</td>
+      <td>${row.content_length || 0}</td>
+      <td>${score}</td>`;
+    tbody.appendChild(tr);
+  });
+}
+
+function sortTable(n) {
+  const table = document.getElementById("dataTable");
+  let switching = true, dir = "asc", switchcount = 0;
+
+  while (switching) {
+    switching = false;
+    const rows = table.rows;
+    for (let i = 1; i < (rows.length - 1); i++) {
+      let x = rows[i].getElementsByTagName("TD")[n];
+      let y = rows[i + 1].getElementsByTagName("TD")[n];
+      let shouldSwitch = false;
+      if (dir === "asc" && x.innerHTML.toLowerCase() > y.innerHTML.toLowerCase()) shouldSwitch = true;
+      if (dir === "desc" && x.innerHTML.toLowerCase() < y.innerHTML.toLowerCase()) shouldSwitch = true;
+      if (shouldSwitch) {
+        rows[i].parentNode.insertBefore(rows[i + 1], rows[i]);
+        switching = true;
+        switchcount++;
+        break;
+      }
+    }
+    if (!switching && switchcount === 0) { dir = (dir === "asc") ? "desc" : "asc"; switching = true; }
+  }
+}
+
+function filterTable() {
+  const input = document.getElementById("searchInput").value.toLowerCase();
+  const rows = document.getElementById("dataTable").getElementsByTagName("tr");
+  for (let i = 1; i < rows.length; i++) {
+    let match = rows[i].innerText.toLowerCase().includes(input);
+    rows[i].style.display = match ? "" : "none";
+  }
+}
+
+function toggleTheme() {
+  document.body.classList.toggle("light");
+}
+
+function exportCSV() {
+  const rows = [...document.querySelectorAll("table tr")].map(row =>
+    [...row.querySelectorAll("td, th")].map(col => `"${col.innerText}"`).join(",")
+  ).join("\\n");
+
+  const blob = new Blob([rows], { type: "text/csv" });
+  const url = URL.createObjectURL(blob);
+  const a = document.createElement("a");
+  a.href = url; a.download = "nc-fuzz-report.csv";
+  document.body.appendChild(a); a.click(); document.body.removeChild(a);
+}
+
+buildTable(httpxData);
+</script>
+</body></html>
