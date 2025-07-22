@@ -25,6 +25,20 @@
 
 ---
 
-## 🛠️ Prerequisites
-```bash
-sudo ./install.sh
+## 🧭 Project Structure
+
+```
+bash
+nc-fuzz/
+├── bash_main.sh           # Main recon engine
+├── install.sh             # Installer for dependencies
+├── Dir(dashboard)h--- copy both header.html / footer.html
+├── README.md / LICENSE
+└── .github/workflows/     # CI setup
+
+-------
+
+## 🛠️ Prerequisites & Usage:
+1. Run `install.sh` to set up tools
+2. Run `bash_main.sh <domain> [--enrich]`
+3. View report in `recon-<domain>/report.html`
