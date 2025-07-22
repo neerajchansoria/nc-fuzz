@@ -80,3 +80,4 @@ cp ../dashboard/header.html report.html
 } >> report.html
 
 echo "[✓] Report complete: recon-$DOMAIN/report.html"
+
